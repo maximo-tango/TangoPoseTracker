@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TangoPoseTracker · 유튜브 오버레이</title>
+    <link rel="icon" type="image/png" href="maximo_tango_b.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .yt-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0; }
+      .yt-row input[type=text] { flex:1; min-width:220px; padding:8px 10px; }
+      #ytWrap { position:relative; margin:0 auto; background:#000; max-width:100%; }
+      #ytWrap iframe, #ytWrap #ytPlayer { position:absolute; inset:0; width:100%; height:100%; border:0; }
+      #ytOverlay { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <img class="brand-mark" src="maximo_tango_b.png" alt="로고" />
+          <div><p class="eyebrow">YOUTUBE OVERLAY</p><h1>Tango <span>Pose</span> Tracker</h1></div>
+        </div>
+        <div class="topbar-note"><a href="index.html" style="color:inherit">← 영상 분석 페이지</a></div>
+      </header>
+
+      <div class="yt-row">
+        <input id="urlInput" type="text" placeholder="유튜브 링크 (youtu.be/… · watch?v=… · shorts/…)" />
+        <label class="action-button" style="cursor:pointer">분석 JSON 열기<input id="jsonInput" type="file" accept=".json,application/json" hidden /></label>
+        <button id="loadBtn" class="track-button" type="button">불러오기</button>
+      </div>
+      <p id="status" class="status">1) 영상 분석 페이지에서 원본을 추적·재생 후 “분석 JSON 저장” → 2) 여기서 유튜브 링크와 JSON을 불러오세요.</p>
+
+      <div id="ytWrap" style="width:960px;aspect-ratio:16/9">
+        <div id="ytPlayer"></div>
+        <canvas id="ytOverlay"></canvas>
+      </div>
+
+      <div class="yt-row">
+        <button id="prevBtn" class="icon-button" type="button" title="1프레임 뒤로">◁</button>
+        <button id="nextBtn" class="icon-button" type="button" title="1프레임 앞으로">▷</button>
+        <label>속도 <select id="rateSelect"></select></label>
+        <label>싱크 <input id="offsetInput" type="number" step="50" value="0" style="width:80px" /> ms</label>
+        <label><input id="showP0" type="checkbox" checked /> 댄서1</label>
+        <label><input id="showP1" type="checkbox" checked /> 댄서2</label>
+        <label><input id="trailToggle" type="checkbox" checked /> 발 궤적</label>
+        <button id="fsBtn" class="action-button" type="button">전체화면(오버레이 유지)</button>
+      </div>
+      <div class="analysis-card" style="max-width:480px"><div class="analysis-head"><h3>탱고 분석</h3></div><div id="metricsBox" class="metric-grid"><span>JSON을 불러오면 수치가 표시됩니다.</span></div><p class="analysis-note">2D 영상 기준 근사값입니다. 기울기 +는 화면 오른쪽.</p></div>
+    </div>
+    <script type="module" src="youtube.js"></script>
+  </body>
+</html>

@@ -1,3 +1,7 @@
+import { KEYS, PersonTracker, extract, packFrame, drawPerson, COLORS, metrics, metricsHTML, pushTrail, drawTrails } from './core.js';
+const metricsBox = document.getElementById('metricsBox');
+const trailToggle = document.getElementById('trailToggle');
+const modelSelect = document.getElementById('modelSelect');
 const video = document.getElementById('video');
 const canvas = document.getElementById('overlayCanvas');
 const ctx = canvas.getContext('2d');
@@ -34,18 +38,18 @@ const exportStatus = document.getElementById('exportStatus');
 
 const POINT_LABELS = {
   head: ['머리', '머리 중심'],
-  leftShoulder: ['왼쪽 어깨', '화면 기준 왼쪽 어깨 관절'],
-  rightShoulder: ['오른쪽 어깨', '화면 기준 오른쪽 어깨 관절'],
-  leftElbow: ['왼쪽 팔꿈치', '화면 기준 왼쪽 팔꿈치 관절'],
-  rightElbow: ['오른쪽 팔꿈치', '화면 기준 오른쪽 팔꿈치 관절'],
-  leftWrist: ['왼쪽 손목', '화면 기준 왼쪽 손목 관절'],
-  rightWrist: ['오른쪽 손목', '화면 기준 오른쪽 손목 관절'],
-  leftHip: ['왼쪽 골반', '화면 기준 왼쪽 골반 관절'],
-  rightHip: ['오른쪽 골반', '화면 기준 오른쪽 골반 관절'],
-  leftKnee: ['왼쪽 무릎', '화면 기준 왼쪽 무릎 관절'],
-  rightKnee: ['오른쪽 무릎', '화면 기준 오른쪽 무릎 관절'],
-  leftAnkle: ['왼쪽 발목', '화면 기준 왼쪽 발목 관절'],
-  rightAnkle: ['오른쪽 발목', '화면 기준 오른쪽 발목 관절']
+  leftShoulder: ['왼쪽 어깨', '인물 본인 기준 왼쪽 어깨 관절'],
+  rightShoulder: ['오른쪽 어깨', '인물 본인 기준 오른쪽 어깨 관절'],
+  leftElbow: ['왼쪽 팔꿈치', '인물 본인 기준 왼쪽 팔꿈치 관절'],
+  rightElbow: ['오른쪽 팔꿈치', '인물 본인 기준 오른쪽 팔꿈치 관절'],
+  leftWrist: ['왼쪽 손목', '인물 본인 기준 왼쪽 손목 관절'],
+  rightWrist: ['오른쪽 손목', '인물 본인 기준 오른쪽 손목 관절'],
+  leftHip: ['왼쪽 골반', '인물 본인 기준 왼쪽 골반 관절'],
+  rightHip: ['오른쪽 골반', '인물 본인 기준 오른쪽 골반 관절'],
+  leftKnee: ['왼쪽 무릎', '인물 본인 기준 왼쪽 무릎 관절'],
+  rightKnee: ['오른쪽 무릎', '인물 본인 기준 오른쪽 무릎 관절'],
+  leftAnkle: ['왼쪽 발목', '인물 본인 기준 왼쪽 발목 관절'],
+  rightAnkle: ['오른쪽 발목', '인물 본인 기준 오른쪽 발목 관절']
 };
 
 const PERSON_COLORS = ['#38bdf8', '#f97316'];
@@ -100,7 +104,16 @@ const state = {
   viewZoom: 1,
   viewPanX: 0,
   viewPanY: 0,
-  videoExporting: false
+  videoExporting: false,
+  people: [null, null],
+  tracker: new PersonTracker(),
+  lastTs: -1,
+  tsOffset: 0,
+  recorded: new Map(),
+  annotationTime: 0,
+  fps: 30,
+  modelName: 'full',
+  trails: [[], []]
 };
 
 let poseLandmarker = null;
@@ -325,18 +338,8 @@ function mapPoseLandmarksToPointMap(landmarks) {
 }
 
 function drawDetectedPoses() {
-  if (!state.landmarkResults.length) {
-    return;
-  }
-
-  state.landmarkResults.forEach((landmarks, index) => {
-    if (!landmarks || landmarks.length < 29) {
-      return;
-    }
-
-    const mapped = mapPoseLandmarksToPointMap(landmarks);
-    drawPersonSkeleton(mapped, PERSON_COLORS[index % PERSON_COLORS.length]);
-  });
+  if (trailToggle.checked) drawTrails(ctx, state.trails, canvas.width, canvas.height, 1 / state.viewZoom);
+  state.people.forEach((p, i) => drawPerson(ctx, p, COLORS[i], canvas.width, canvas.height, 1 / state.viewZoom));
 }
 
 function drawManualPoints() {
@@ -595,7 +598,7 @@ async function initPoseLandmarker() {
 
   poseLandmarker = await PoseLandmarker.createFromOptions(filesetResolver, {
     baseOptions: {
-      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'
+      modelAssetPath: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${state.modelName}/float16/1/pose_landmarker_${state.modelName}.task`
     },
     runningMode: 'VIDEO',
     numPoses: 2,
@@ -613,18 +616,28 @@ async function runTrackingFrame() {
     return;
   }
 
-  if (video.currentTime === state.lastVideoTime) {
+  const t = video.currentTime;
+  if (t === state.lastVideoTime) {
     return;
   }
 
-  state.lastVideoTime = video.currentTime;
-  const timestamp = performance.now();
-  const result = poseLandmarker.detectForVideo(video, timestamp);
-  state.landmarkResults = result.landmarks || [];
-  if (state.landmarkResults.length !== state.lastDetectionCount) {
-    state.lastDetectionCount = state.landmarkResults.length;
-    logStatus(state.lastDetectionCount
-      ? `${state.lastDetectionCount}명의 포즈를 감지해 추적 중입니다.`
+  state.lastVideoTime = t;
+  if (t * 1000 + state.tsOffset <= state.lastTs) {
+    state.tsOffset = state.lastTs + 1 - t * 1000;
+  }
+  state.lastTs = t * 1000 + state.tsOffset;
+  const result = poseLandmarker.detectForVideo(video, state.lastTs);
+  const dets = (result.landmarks || []).map(extract);
+  state.people = state.tracker.update(dets, t);
+  pushTrail(state.trails, state.people, t);
+  metricsBox.innerHTML = metricsHTML(metrics(state.people, video.videoWidth, video.videoHeight));
+  if (!video.seeking) {
+    state.recorded.set(Math.round(t * 1000), packFrame(t, state.people));
+  }
+  if (dets.length !== state.lastDetectionCount) {
+    state.lastDetectionCount = dets.length;
+    logStatus(dets.length
+      ? `${dets.length}명의 포즈를 감지해 추적 중입니다. (기록 ${state.recorded.size}프레임)`
       : '모델은 작동 중이지만 인물을 찾지 못했습니다. 밝고 전신이 보이는 프레임인지 확인해 주세요.');
   }
   render();
@@ -657,6 +670,7 @@ function updateAnnotationPrompt() {
 }
 
 function finishManualAnnotation() {
+  state.annotationTime = video.currentTime;
   state.annotationActive = false;
   state.trackingEnabled = false;
   state.annotationPerson = 1;
@@ -701,6 +715,50 @@ function seekBySeconds(deltaSeconds) {
   const next = Math.min(Math.max(video.currentTime + deltaSeconds, 0), video.duration);
   video.currentTime = next;
   updateTimeDisplay();
+}
+
+function stepFrame(frames) {
+  if (!state.videoReady || state.videoExporting || !Number.isFinite(video.duration)) {
+    return;
+  }
+
+  video.pause();
+  video.currentTime = Math.min(video.duration, Math.max(0, video.currentTime + frames / state.fps + (frames > 0 ? 0.001 : 0)));
+  updateTimeDisplay();
+}
+
+function saveAnalysisJson() {
+  if (!state.recorded.size) {
+    logStatus('저장할 분석 데이터가 없습니다. 추적을 켠 채로 영상을 처음부터 끝까지 재생해 주세요.');
+    return;
+  }
+
+  const frames = [...state.recorded.values()].sort((a, b) => a[0] - b[0]);
+  const data = { version: 1, meta: { width: video.videoWidth, height: video.videoHeight, fps: state.fps, duration: video.duration }, frames };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'tango-pose-analysis.json';
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 5000);
+  logStatus(`분석 데이터 ${frames.length}프레임을 JSON으로 저장했습니다. 유튜브 페이지에서 불러와 사용하세요.`);
+}
+
+document.getElementById('analysisBtn').addEventListener('click', saveAnalysisJson);
+document.getElementById('framePrevBtn').addEventListener('click', () => stepFrame(-1));
+document.getElementById('frameNextBtn').addEventListener('click', () => stepFrame(1));
+
+if (video.requestVideoFrameCallback) {
+  let lastMedia = null;
+  const measure = (_now, meta) => {
+    if (lastMedia != null && !video.paused && video.playbackRate === 1) {
+      const d = meta.mediaTime - lastMedia;
+      if (d > 0.008 && d < 0.1) state.fps = Math.round(1 / d);
+    }
+    lastMedia = meta.mediaTime;
+    video.requestVideoFrameCallback(measure);
+  };
+  video.requestVideoFrameCallback(measure);
 }
 
 function togglePlayback() {
@@ -937,6 +995,10 @@ function loadVideoFile(file) {
   state.landmarkResults = [];
   state.manualPoints = [{}, {}];
   state.pointHistory = [];
+  state.people = [null, null];
+  state.recorded.clear();
+  state.trails = [[], []];
+  state.tracker.reset();
   resetView();
   updatePlaybackUI();
   updateTimeDisplay();
@@ -1015,6 +1077,16 @@ trackBtn.addEventListener('click', async () => {
   state.trackerLoading = true;
   updateAnnotationGuide();
   logStatus('포즈 추적 모델을 불러오는 중입니다. 첫 실행은 네트워크 상태에 따라 시간이 걸릴 수 있습니다.');
+  const seedOf = (pts) => (Object.keys(pts).length === KEYS.length
+    ? KEYS.map((k) => [pts[k].x / canvas.width, pts[k].y / canvas.height, 1]) : null);
+  const seeds = state.manualPoints.map(seedOf);
+  state.tracker.reset(seeds[0] && seeds[1] ? seeds : null);
+  state.people = [null, null];
+  state.recorded.clear();
+  state.trails = [[], []];
+  if (seeds[0] && seeds[1]) {
+    video.currentTime = state.annotationTime;
+  }
   const playbackStarted = video.play().then(() => true).catch(() => false);
 
   try {
@@ -1047,6 +1119,10 @@ resetBtn.addEventListener('click', () => {
   state.trackingEnabled = false;
   state.annotationActive = false;
   state.landmarkResults = [];
+  state.people = [null, null];
+  state.recorded.clear();
+  state.trails = [[], []];
+  state.tracker.reset();
   state.manualPoints = [{}, {}];
   state.pointHistory = [];
   state.viewZoom = 1;
@@ -1072,9 +1148,9 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault();
     togglePlayback();
   } else if (event.code === 'ArrowLeft') {
-    seekBySeconds(event.shiftKey ? -5 : -1);
+    stepFrame(event.shiftKey ? -state.fps : -1);
   } else if (event.code === 'ArrowRight') {
-    seekBySeconds(event.shiftKey ? 5 : 1);
+    stepFrame(event.shiftKey ? state.fps : 1);
   }
 });
 
@@ -1091,3 +1167,38 @@ function tick() {
 updatePlaybackUI();
 updateAnnotationGuide();
 requestAnimationFrame(tick);
+
+modelSelect.addEventListener('change', () => {
+  state.modelName = modelSelect.value;
+  poseLandmarker?.close();
+  poseLandmarker = null;
+  state.trackerReady = false;
+  if (state.trackingEnabled) {
+    initPoseLandmarker().catch(() => logStatus('모델을 불러오지 못했습니다. 네트워크를 확인해 주세요.'));
+  } else {
+    logStatus(`추적 모델을 ${modelSelect.options[modelSelect.selectedIndex].text}(으)로 선택했습니다.`);
+  }
+});
+
+// 뷰어 내부 플레이어 바: 재생 중 2.5초 뒤 자동 숨김, 점 지정 중에는 하단에 마우스를 올릴 때만 표시
+let barTimer = null;
+function showBar() {
+  videoWrap.classList.add('bar-on');
+  clearTimeout(barTimer);
+  if (!video.paused && !state.videoExporting) {
+    barTimer = setTimeout(() => videoWrap.classList.remove('bar-on'), 2500);
+  }
+}
+videoWrap.addEventListener('pointerdown', showBar);
+videoWrap.addEventListener('pointermove', (e) => {
+  showBar();
+  const r = videoWrap.getBoundingClientRect();
+  videoWrap.classList.toggle('bar-peek', videoWrap.classList.contains('is-annotating') && e.pointerType === 'mouse' && e.buttons === 0 && r.bottom - e.clientY < 90);
+});
+videoWrap.addEventListener('pointerleave', () => {
+  videoWrap.classList.remove('bar-peek');
+  if (!video.paused) videoWrap.classList.remove('bar-on');
+});
+video.addEventListener('play', showBar);
+video.addEventListener('pause', () => { clearTimeout(barTimer); videoWrap.classList.add('bar-on'); });
+video.addEventListener('loadedmetadata', () => videoWrap.classList.add('bar-on'));

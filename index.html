@@ -17,7 +17,7 @@
             <h1>Tango <span>Pose</span> Tracker</h1>
           </div>
         </div>
-        <div class="topbar-note"><span class="live-dot"></span> 브라우저에서 처리됩니다</div>
+        <div class="topbar-note"><span class="live-dot"></span> 브라우저에서 처리됩니다 · <a href="youtube.html" style="color:inherit">유튜브 오버레이 →</a></div>
       </header>
 
       <section class="toolbar">
@@ -33,6 +33,11 @@
         <button id="forwardBtn" class="icon-button" type="button" aria-label="5초 앞으로">+5</button>
         <span class="toolbar-spacer"></span>
         <button id="annotateBtn" class="action-button" type="button">점 지정 시작</button>
+        <select id="modelSelect" class="model-select" aria-label="추적 모델">
+          <option value="lite">경량 (빠름)</option>
+          <option value="full" selected>표준</option>
+          <option value="heavy">정밀 (느림)</option>
+        </select>
         <button id="trackBtn" class="track-button" type="button">추적 시작</button>
         <button id="resetBtn" class="reset-button" type="button" aria-label="초기화" title="초기화">↺</button>
       </section>
@@ -62,17 +67,17 @@
                 <button id="fitViewBtn" type="button" aria-label="화면에 맞추기" title="화면에 맞추기">맞춤</button>
                 <button id="captureBtn" type="button" aria-label="정지 프레임 PNG 다운로드" title="정지 프레임 PNG 다운로드">PNG ↓</button>
               </div>
-            </div>
 
-            <div class="video-controls">
-              <div class="timeline-row">
-                <span id="timeLabel" class="time-label">00:00 / 00:00</span>
+              <div class="player-bar" id="playerBar">
                 <input id="scrubSlider" type="range" min="0" max="1000" value="0" aria-label="영상 위치" />
-              </div>
-              <div class="control-footer">
-                <span class="timeline-hint">← / → 프레임 이동 · Space 재생</span>
-                <div class="speed-row">
-                  <label for="speedSelect">속도</label>
+                <div class="player-row">
+                  <button id="playPauseBtn" class="pb-btn pb-play" type="button" aria-label="재생">▶</button>
+                  <button id="rewindBtn" class="pb-btn" type="button" aria-label="5초 뒤로">−5</button>
+                  <button id="framePrevBtn" class="pb-btn" type="button" aria-label="1프레임 뒤로">◁</button>
+                  <button id="frameNextBtn" class="pb-btn" type="button" aria-label="1프레임 앞으로">▷</button>
+                  <button id="forwardBtn" class="pb-btn" type="button" aria-label="5초 앞으로">+5</button>
+                  <span id="timeLabel" class="time-label">00:00 / 00:00</span>
+                  <span class="toolbar-spacer"></span>
                   <select id="speedSelect">
                     <option value="0.5">0.5×</option>
                     <option value="0.75">0.75×</option>
@@ -83,6 +88,12 @@
                   </select>
                 </div>
               </div>
+            </div>
+
+            <div class="video-controls">
+              <div class="control-footer">
+                <span class="timeline-hint">← / → 1프레임 (Shift: 1초) · Space 재생</span>
+              </div>
               <div class="export-row">
                 <label for="exportSpeedSelect">내보내기 속도</label>
                 <select id="exportSpeedSelect">
@@ -90,6 +101,7 @@
                   <option value="0.5" selected>0.5×</option>
                 </select>
                 <button id="exportVideoBtn" type="button" disabled>포즈 포함 영상 저장</button>
+                <button id="analysisBtn" type="button">분석 JSON 저장</button>
                 <span id="exportStatus" aria-live="polite"></span>
               </div>
             </div>
@@ -130,6 +142,12 @@
             <div class="current-point-top"><span id="currentPersonLabel">다음 포인트</span><span id="currentPointIndex">—</span></div>
             <h3 id="currentPointName">영상 업로드 대기</h3>
             <p id="currentPointHint">영상을 불러온 뒤 점 지정을 시작하세요.</p>
+          </div>
+
+          <div class="analysis-card">
+            <div class="analysis-head"><h3>탱고 분석</h3><label class="trail-toggle"><input id="trailToggle" type="checkbox" checked /> 발 궤적</label></div>
+            <div id="metricsBox" class="metric-grid"><span>추적을 시작하면 수치가 표시됩니다.</span></div>
+            <p class="analysis-note">2D 영상 기준 근사값입니다. 기울기 +는 화면 오른쪽.</p>
           </div>
 
           <div class="point-list-heading"><span>지정 순서</span><span>13 POINTS</span></div>
