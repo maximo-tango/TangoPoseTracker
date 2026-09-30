@@ -4,58 +4,140 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TangoPoseTracker</title>
+    <link rel="icon" type="image/png" href="maximo_tango_b.png" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">GitHub Pages Static Demo</p>
-          <h1>TangoPoseTracker</h1>
+        <div class="brand-lockup">
+          <img class="brand-mark" src="maximo_tango_b.png" alt="TangoPoseTracker 로고" />
+          <div>
+            <p class="eyebrow">MOVEMENT STUDY / 01</p>
+            <h1>Tango <span>Pose</span> Tracker</h1>
+          </div>
         </div>
+        <div class="topbar-note"><span class="live-dot"></span> 브라우저에서 처리됩니다</div>
       </header>
 
       <section class="toolbar">
         <label class="upload-box" for="videoUpload">
           <input id="videoUpload" type="file" accept="video/*" />
-          <span>영상 업로드</span>
+          <span class="upload-icon" aria-hidden="true">＋</span>
+          <span>영상 열기</span>
         </label>
 
-        <button id="playPauseBtn" class="primary-button">재생</button>
-        <button id="rewindBtn" class="secondary-button">-5초</button>
-        <button id="forwardBtn" class="secondary-button">+5초</button>
-        <button id="annotateBtn" class="primary-button">정지 프레임 점찍기</button>
-        <button id="trackBtn" class="secondary-button">동작 추적 시작</button>
-        <button id="resetBtn" class="ghost-button">초기화</button>
+        <div class="toolbar-divider" aria-hidden="true"></div>
+        <button id="playPauseBtn" class="icon-button" type="button" aria-label="재생">▶</button>
+        <button id="rewindBtn" class="icon-button" type="button" aria-label="5초 뒤로">−5</button>
+        <button id="forwardBtn" class="icon-button" type="button" aria-label="5초 앞으로">+5</button>
+        <span class="toolbar-spacer"></span>
+        <button id="annotateBtn" class="action-button" type="button">점 지정 시작</button>
+        <button id="trackBtn" class="track-button" type="button">추적 시작</button>
+        <button id="resetBtn" class="reset-button" type="button" aria-label="초기화" title="초기화">↺</button>
       </section>
 
-      <p id="status" class="status">영상을 업로드한 뒤, 재생/정지와 프레임 이동을 사용해 정지 프레임에서 두 사람의 포인트를 지정해 주세요.</p>
-
-      <div class="viewer-panel">
-        <div class="video-wrap">
-          <video id="video" playsinline preload="metadata"></video>
-          <canvas id="overlayCanvas"></canvas>
-        </div>
-
-        <div class="video-controls">
-          <div class="timeline-row">
-            <span id="timeLabel" class="time-label">00:00 / 00:00</span>
-            <input id="scrubSlider" type="range" min="0" max="1000" value="0" />
-          </div>
-
-          <div class="speed-row">
-            <label for="speedSelect">재생 속도</label>
-            <select id="speedSelect">
-              <option value="0.5">0.5x</option>
-              <option value="0.75">0.75x</option>
-              <option value="1" selected>1.0x</option>
-              <option value="1.25">1.25x</option>
-              <option value="1.5">1.5x</option>
-              <option value="2">2.0x</option>
-            </select>
-          </div>
-        </div>
+      <div class="status-row" aria-live="polite">
+        <span class="status-indicator" aria-hidden="true"></span>
+        <p id="status" class="status">영상을 열어 분석을 시작하세요.</p>
+        <span id="workflowLabel" class="workflow-label">대기 중</span>
       </div>
+
+      <main class="workspace">
+        <section class="viewer-column" aria-label="영상 작업 영역">
+          <div class="viewer-panel">
+            <div class="video-wrap is-empty" id="videoWrap">
+              <video id="video" playsinline preload="metadata"></video>
+              <canvas id="overlayCanvas"></canvas>
+              <div class="empty-state" id="emptyState">
+                <div class="empty-glyph" aria-hidden="true">↥</div>
+                <p class="empty-title">댄스 영상을 불러오세요</p>
+                <p class="empty-meta">MP4 · MOV · WEBM</p>
+              </div>
+              <div class="frame-badge" id="frameBadge">FRAME <span id="frameTime">00:00</span></div>
+              <div class="zoom-controls" aria-label="영상 확대 도구">
+                <button id="zoomOutBtn" type="button" aria-label="축소" title="축소">−</button>
+                <span id="zoomLabel" aria-live="polite">100%</span>
+                <button id="zoomInBtn" type="button" aria-label="확대" title="확대">+</button>
+                <button id="fitViewBtn" type="button" aria-label="화면에 맞추기" title="화면에 맞추기">맞춤</button>
+                <button id="captureBtn" type="button" aria-label="정지 프레임 PNG 다운로드" title="정지 프레임 PNG 다운로드">PNG ↓</button>
+              </div>
+            </div>
+
+            <div class="video-controls">
+              <div class="timeline-row">
+                <span id="timeLabel" class="time-label">00:00 / 00:00</span>
+                <input id="scrubSlider" type="range" min="0" max="1000" value="0" aria-label="영상 위치" />
+              </div>
+              <div class="control-footer">
+                <span class="timeline-hint">← / → 프레임 이동 · Space 재생</span>
+                <div class="speed-row">
+                  <label for="speedSelect">속도</label>
+                  <select id="speedSelect">
+                    <option value="0.5">0.5×</option>
+                    <option value="0.75">0.75×</option>
+                    <option value="1" selected>1×</option>
+                    <option value="1.25">1.25×</option>
+                    <option value="1.5">1.5×</option>
+                    <option value="2">2×</option>
+                  </select>
+                </div>
+              </div>
+              <div class="export-row">
+                <label for="exportSpeedSelect">내보내기 속도</label>
+                <select id="exportSpeedSelect">
+                  <option value="0.25">0.25×</option>
+                  <option value="0.5" selected>0.5×</option>
+                </select>
+                <button id="exportVideoBtn" type="button" disabled>포즈 포함 영상 저장</button>
+                <span id="exportStatus" aria-live="polite"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="viewer-caption">
+            <span>ANNOTATION CANVAS</span>
+            <span>좌우 스와이프 탐색 · 정지 프레임 PNG 저장</span>
+          </div>
+        </section>
+
+        <aside class="guide-panel" aria-label="포인트 지정 진행 상황">
+          <div class="guide-heading">
+            <div>
+              <p class="eyebrow">MANUAL ANNOTATION</p>
+              <h2>포인트 지정</h2>
+            </div>
+            <span class="total-count" id="annotationProgress">0 <i>/ 26</i></span>
+          </div>
+          <div class="overall-progress" aria-hidden="true"><span id="annotationProgressBar"></span></div>
+
+          <div class="person-progress">
+            <div class="person-row">
+              <span class="person-key person-one">01</span>
+              <span class="person-name">댄서 1</span>
+              <span class="person-count" id="personOneCount">0 / 13</span>
+            </div>
+            <div class="person-meter"><span id="personOneBar"></span></div>
+            <div class="person-row second-person">
+              <span class="person-key person-two">02</span>
+              <span class="person-name">댄서 2</span>
+              <span class="person-count" id="personTwoCount">0 / 13</span>
+            </div>
+            <div class="person-meter"><span id="personTwoBar"></span></div>
+          </div>
+
+          <div class="current-point">
+            <div class="current-point-top"><span id="currentPersonLabel">다음 포인트</span><span id="currentPointIndex">—</span></div>
+            <h3 id="currentPointName">영상 업로드 대기</h3>
+            <p id="currentPointHint">영상을 불러온 뒤 점 지정을 시작하세요.</p>
+          </div>
+
+          <div class="point-list-heading"><span>지정 순서</span><span>13 POINTS</span></div>
+          <ol class="point-list" id="pointChecklist"></ol>
+
+          <button id="undoPointBtn" class="undo-button" type="button" disabled><span aria-hidden="true">↶</span> 마지막 점 되돌리기</button>
+        </aside>
+      </main>
     </div>
 
     <script type="module" src="script.js"></script>
