@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TangoPoseTracker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GitHub Pages Static Demo</p>
+          <h1>TangoPoseTracker</h1>
+        </div>
+      </header>
+
+      <section class="toolbar">
+        <label class="upload-box" for="videoUpload">
+          <input id="videoUpload" type="file" accept="video/*" />
+          <span>영상 업로드</span>
+        </label>
+
+        <button id="playPauseBtn" class="primary-button">재생</button>
+        <button id="rewindBtn" class="secondary-button">-5초</button>
+        <button id="forwardBtn" class="secondary-button">+5초</button>
+        <button id="annotateBtn" class="primary-button">정지 프레임 점찍기</button>
+        <button id="trackBtn" class="secondary-button">동작 추적 시작</button>
+        <button id="resetBtn" class="ghost-button">초기화</button>
+      </section>
+
+      <p id="status" class="status">영상을 업로드한 뒤, 재생/정지와 프레임 이동을 사용해 정지 프레임에서 두 사람의 포인트를 지정해 주세요.</p>
+
+      <div class="viewer-panel">
+        <div class="video-wrap">
+          <video id="video" playsinline preload="metadata"></video>
+          <canvas id="overlayCanvas"></canvas>
+        </div>
+
+        <div class="video-controls">
+          <div class="timeline-row">
+            <span id="timeLabel" class="time-label">00:00 / 00:00</span>
+            <input id="scrubSlider" type="range" min="0" max="1000" value="0" />
+          </div>
+
+          <div class="speed-row">
+            <label for="speedSelect">재생 속도</label>
+            <select id="speedSelect">
+              <option value="0.5">0.5x</option>
+              <option value="0.75">0.75x</option>
+              <option value="1" selected>1.0x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2.0x</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
